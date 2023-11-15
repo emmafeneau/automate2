@@ -43,50 +43,6 @@ def complementAEF(AEF):
             etat["final"] = True
     return AEF_C
             
-def regrouper_etat(AEF_M, liste_etat_initiaux, symboles):
-    # Créer un nouveau dictionnaire pour le nouvel état initial
-    nouvel_etat_initial = {}
-    for symbole in symboles:
-        # Initialiser la liste des destinations pour chaque symbole
-        nouvel_etat_initial[symbole] = []
-    
-    # Parcourir les états initiaux de l'AEF_M
-    for etat_initial in liste_etat_initiaux:
-        # Si un seul des état est final, le nouvel état initial est aussi final
-        if etat_initial["final"]:
-            nouvel_etat_initial["final"] = True
-        # Pour chaque symbole, ajouter les destinations des états initiaux au nouvel état initial
-        for symbole in symboles:
-            for dest in etat_initial[symbole]:
-                if dest not in nouvel_etat_initial[symbole]:
-                    nouvel_etat_initial[symbole].append(dest)
-
-    # Ajouter la clé "initial" au nouvel état initial et la mettre à True
-    nouvel_etat_initial["initial"] = True
-    
-    # Ajouter le nouvel état initial à la fin de l'AEF_M
-    #AEF_M.append(nouvel_etat_initial)
-    AEF_M.insert(0,nouvel_etat_initial)
-    print(AEF_M)
-    # Parcourir l'AEF_M et supprimer les anciens états initiaux
-    count = 0
-    print(liste_etat_initiaux)
-    for etat in AEF_M:
-        if etat in liste_etat_initiaux:
-            AEF_M.remove(etat)
-            print(AEF_M)
-            count += 1
-            print(count)
-        else:
-            # Pour chaque symbole, remplacer les destinations des anciens états initiaux par le nouvel état initial
-            for symbole in symboles:
-                for j, dest in enumerate(etat[symbole]):
-                    if dest in liste_etat_initiaux:
-                        etat[symbole][j] = len(AEF_M) - 1 
-    
-   
-    return AEF_M
-
 def miroir(AEF, symboles): 
     count = 0
     for etat in AEF:
