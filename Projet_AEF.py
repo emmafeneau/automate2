@@ -1,7 +1,6 @@
-import pandas as pd
-import numpy as np
-from pprint import pprint
-
+#import pandas as pd
+#import numpy as np
+import copy
 
 def saisir_AEF():
     AEF = []
@@ -30,23 +29,80 @@ def saisir_AEF():
     # Par défaut, on prend l'état 0 comme état initial
     AEF[0]["initial"] = True
 
-    return AEF, alphabets, n
+    return AEF, alphabets, n, etats_finaux
 
 def supprimerAEF(AEF):
     AEF.clear()
     
 def complementAEF(AEF):
-    AEF_C = AEF
+    AEF_C = [copy.deepcopy(etat) for etat in AEF]
     for etat in AEF_C:
-        if etat["final"] == True:
+        if etat["final"]:
             etat["final"] = False
         else:
             etat["final"] = True
     return AEF_C
             
-def miroir(AEF):
-    temp_AEF = AEF
-    for etat in temp_AEF:
+def regrouper_etat(AEF_M, liste_etat_initiaux, symboles):
+    # Créer un nouveau dictionnaire pour le nouvel état initial
+    nouvel_etat_initial = {}
+    for symbole in symboles:
+        # Initialiser la liste des destinations pour chaque symbole
+        nouvel_etat_initial[symbole] = []
+    
+    # Parcourir les états initiaux de l'AEF_M
+    for etat_initial in liste_etat_initiaux:
+        # Si un seul des état est final, le nouvel état initial est aussi final
+        if etat_initial["final"]:
+            nouvel_etat_initial["final"] = True
+        # Pour chaque symbole, ajouter les destinations des états initiaux au nouvel état initial
+        for symbole in symboles:
+            for dest in etat_initial[symbole]:
+                if dest not in nouvel_etat_initial[symbole]:
+                    nouvel_etat_initial[symbole].append(dest)
+
+    # Ajouter la clé "initial" au nouvel état initial et la mettre à True
+    nouvel_etat_initial["initial"] = True
+    
+    # Ajouter le nouvel état initial à la fin de l'AEF_M
+    #AEF_M.append(nouvel_etat_initial)
+    AEF_M.insert(0,nouvel_etat_initial)
+    print(AEF_M)
+    # Parcourir l'AEF_M et supprimer les anciens états initiaux
+    count = 0
+    print(liste_etat_initiaux)
+    for etat in AEF_M:
+        if etat in liste_etat_initiaux:
+            AEF_M.remove(etat)
+            print(AEF_M)
+            count += 1
+            print(count)
+        else:
+            # Pour chaque symbole, remplacer les destinations des anciens états initiaux par le nouvel état initial
+            for symbole in symboles:
+                for j, dest in enumerate(etat[symbole]):
+                    if dest in liste_etat_initiaux:
+                        etat[symbole][j] = len(AEF_M) - 1 
+    
+   
+    return AEF_M
+
+def miroir(AEF, symboles): 
+    count = 0
+    for etat in AEF:
+        if etat["final"]:
+            count += 1
+    if count > 1:
+        print("Transformation impossible : l'AEF contient plusieurs états finaux")
+        return AEF
+    
+    AEF_M = [copy.deepcopy(etat) for etat in AEF]
+
+    for etat in AEF_M:
+        for symbole in symboles:
+            etat[symbole] = []
+
+    for i, etat in enumerate(AEF_M):
         if etat["final"] and etat["initial"]:
             etat["initial"] = True
             etat["final"] = True
@@ -56,51 +112,17 @@ def miroir(AEF):
         elif etat["initial"]:
             etat["final"] = True
             etat["initial"] = False
-            
-        del etat["final"], etat["initial"]
         
-        count = 0
-        dictionnaire = {}
-        AEF_M=[]
         
-        for item in temp_AEF:
-            pprint(item)
-            for transitions, dest in item.items():
-                myList = []
-                for valeur in dest:
-                    myList.append(dest)
-                dictionnaire[transitions] = myList
-            AEF_M.append(dictionnaire)
-            count += 1
-        
+        for symbole in symboles:
+            dest_list = AEF[i][symbole]
+            if dest_list:
+                for dest in dest_list:
+                        AEF_M[dest][symbole].append(i)
     
-    #    pprint(AEF_M[idx])
-        
-    #    for transitions in etat[idx].keys():
-     #       for dest in etat[idx][transitions]:
-     #           AEF_M[dest][transitions] = idx
-                
-                    
-        
-        
-    #    cles = etat.keys()
-        
-     #   count = 0
-        
-       # for cle in cles:
-       #     print("cle", cle)
-        #    for dest in etat[cle]:
-                
-           #     print("dest", dest)
-          #      index = ord(cle)
-          #      AEF_M[dest][count] = etat
-          #  count += 1
-        
+    print("Le miroir de l'AEF a été généré")
     return AEF_M
         
-        
-            
-
 def estDeterministe(AEF):
     for etat in AEF:
         cles=etat.keys()
@@ -109,14 +131,51 @@ def estDeterministe(AEF):
                 return False
     return True
 
-def Rendre_Deterministe(AEF):
-    AEF_D = AEF
-    if estDeterministe(AEF):
-        print("L'AEF est déjà déterministe")
-        return AEF
-    else:
-        for alphabet in alphabets:
-            AEF[0][alphabet] = 0
+def rendre_deterministe(AEF, alphabets, n, etats_finaux):
+    AEF_det = []  # Nouvel AEF déterministe vide
+    file = []  # File pour stocker les nouveaux états à traiter
+    dico = {}  # Dictionnaire pour associer les nouveaux états à des indices
+    indice = 0  # Compteur d'indices initialisé
+
+    etat_initial = []  # Ensemble des états accessibles depuis l'état initial de l'AEF non déterministe
+    for i in range(n):
+        if AEF[i]["initial"]:
+            etat_initial.append(i)
+    
+    file.append(etat_initial)  
+    dico[tuple(etat_initial)] = indice
+    indice += 1
+    AEF_det.append({alphabet:[] for alphabet in alphabets})  # Ajoute l'état initial à l'AEF déterministe avec la même structure qu'un AEF
+
+    while file:  # Tant qu'il y a des états à traiter dans la file
+        etat_courant = file.pop(0)  # Défile le premier état
+        for alphabet in alphabets:  # Pour chaque symbole de l'alphabet
+            etat_suivant = []  # Ensemble des états accessibles depuis l'état courant avec ce symbole
+            for i in etat_courant:
+                etat_suivant.extend(AEF[i][alphabet])
+            etat_suivant = list(set(etat_suivant))  # Élimine les doublons
+            if etat_suivant:  # Si cet ensemble n'est pas vide
+                if tuple(etat_suivant) not in dico:  # Si cet ensemble n'a pas encore été traité
+                    dico[tuple(etat_suivant)] = indice
+                    indice += 1
+                    file.append(etat_suivant)
+                    AEF_det.append({alphabet:[] for alphabet in alphabets})  # Ajoute un nouvel état à l'AEF déterministe avec la même structure qu'un AEF
+                AEF_det[dico[tuple(etat_courant)]][alphabet] = [dico[tuple(etat_suivant)]]  # Ajoute la transition sous forme de liste
+
+    for etat in dico:  # Détermine les états finaux de l'AEF déterministe
+        final = False
+        for i in etat:
+            if str(i) in etats_finaux:
+                final = True 
+                break
+        AEF_det[dico[etat]]["final"] = final
+        AEF_det[dico[etat]]["initial"] = False
+    
+    AEF_det[0]["initial"] = True
+
+    return AEF_det
+
+        
 
 def estComplet(AEF):
     for etat in AEF:
@@ -150,6 +209,22 @@ def Afficher_AEF(AEF):
     for i, etat in enumerate(AEF):
         print(f"{i} = {etat}")
 
+def Affichage(AEF, nb_etats, etats_finaux, symboles):
+    print(f"Nombre d'états : {nb_etats}")
+    print("Etat initial : q0")
+    print("Etats finaux :", ", ".join(f"q{etat}" for etat in etats_finaux))
+    print("Symboles de l'AEF :", ", ".join(f"{symbole}" for symbole in symboles))
+    print("Transitions : ")
+    for i, etat in enumerate(AEF):
+        for symbole, destinations in etat.items():
+            if symbole not in ["final", "initial"]:
+                for dest in destinations:
+                    print(f"q{i} -{symbole}- q{dest} ")
+
+# aef = [{'a': [0,1], 'b': [], 'final' : False, 'initial' : True},
+#                     {'a': [1], 'b': [1], 'final' : True, 'initial' : False}]
+
+
 # Programme principal
 if __name__ == "__main__": 
     while True: 
@@ -172,7 +247,7 @@ if __name__ == "__main__":
         choice = input("Entrez votre choix : ")
 
         if choice == '1':
-            aef, alphabets, nb_etats = saisir_AEF()
+            aef, symboles, nb_etats, etats_finaux = saisir_AEF()
         elif choice == '2':
             aef = Importer_AEF(input("Saisir le nom du fichier à importer : "))
             print("AEF importé :")
@@ -194,7 +269,7 @@ if __name__ == "__main__":
             else:
                 print("L'AEF n'est pas complet")    
         elif choice == '7':
-            aef_complet = Rendre_Complet(aef, alphabets)
+            aef_complet = Rendre_Complet(aef, symboles)
             print("L'AEF a été rendu complet")   
         elif choice == '8':
             if estDeterministe(aef):
@@ -202,10 +277,13 @@ if __name__ == "__main__":
             else:
                 print("L'AEF n'est pas déterministe")
         elif choice == '9':
-            aef = rendreDeterministe(aef, alphabets)
+            aef_deterministe = rendre_deterministe(aef, symboles, nb_etats, etats_finaux)
             print("L'AEF a été rendu déterministe")
         elif choice == '10':
-            Afficher_AEF(aef)
+            #Afficher_AEF(aef)
+            #Afficher_AEF(aef_m)
+            Affichage(aef, nb_etats, etats_finaux, symboles)
+
         elif choice == '11':
             supprimerAEF(aef)
             print("L'AEF a été supprimé")
@@ -213,8 +291,10 @@ if __name__ == "__main__":
             aef_c = complementAEF(aef)
             print("Complément de l'AEF")
         elif choice == '13':
-            aef_m = miroir(aef)
-            print("Miroir de l'AEF")
+            # aef = [{'a': [0,1], 'b': [1], 'final': True, 'initial': True},
+            #         {'a': [1], 'b': [0], 'final': True, 'initial': False}, 
+            #         {'a': [2], 'b': [0,2],'final': False, 'initial': False}]
+            aef_m = miroir(aef, symboles)
         elif choice == '0':
             break
         else:
