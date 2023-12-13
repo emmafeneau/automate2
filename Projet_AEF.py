@@ -29,7 +29,7 @@ def saisir_AEF():
     # Par défaut, on prend l'état 0 comme état initial
     AEF[0]["initial"] = True
 
-    return AEF, alphabets, n, etats_finaux
+    return AEF, alphabets, etats_finaux
 
 def supprimerAEF(AEF):
     AEF.clear()
@@ -127,14 +127,8 @@ def rendre_deterministe(AEF, alphabets, etats_finaux):
         AEF_det[dico[etat]]["initial"] = False
     
     AEF_det[0]["initial"] = True
-    # changer nb_etats et etats_finaux
-    etats_finaux_Det = []
-    n = len(AEF_det)
-    for indice, etat in enumerate(AEF_det):
-        if AEF_det[indice]["final"]:
-            etats_finaux_Det.append(indice) 
-
-    return AEF_det, n, etats_finaux_Det
+    
+    return AEF_det
 
 
 
@@ -146,7 +140,7 @@ def estComplet(AEF, symboles):
     return True
 
 def Rendre_Complet(AEF, alphabets):
-    AEF_Complet = AEF
+    AEF_Complet = [copy.deepcopy(etat) for etat in AEF]
     if estComplet(AEF, alphabets):
         print("L'AEF est déjà complet")
         return AEF
@@ -158,7 +152,7 @@ def Rendre_Complet(AEF, alphabets):
         for etat in AEF_Complet:
             for alphabet in alphabets:
                 if len(etat[alphabet])==0:
-                    etat[alphabet] = [len(AEF_Complet) - 1]
+                    etat[alphabet] = [len(AEF_Complet) - 1] # car on ajouté l'état phi
                     
         phi["final"] = False
         phi["initial"] = False
@@ -169,9 +163,10 @@ def Afficher_AEF(AEF):
     for i, etat in enumerate(AEF):
         print(f"{i} = {etat}")
 
-def Affichage(AEF, nb_etats, etats_finaux, symboles):
-    print(f"Nombre d'états : {nb_etats}")
+def Affichage(AEF, symboles):
+    print(f"Nombre d'états : {len(AEF)}")
     print("Etat initial : q0")
+    etats_finaux = [i for i, etat in enumerate(AEF) if etat["final"]]
     print("Etats finaux :", ", ".join(f"q{etat}" for etat in etats_finaux))
     print("Symboles de l'AEF :", ", ".join(f"{symbole}" for symbole in symboles))
     print("Transitions : ")
@@ -179,7 +174,7 @@ def Affichage(AEF, nb_etats, etats_finaux, symboles):
         for symbole, destinations in etat.items():
             if symbole not in ["final", "initial"]:
                 for dest in destinations:
-                    print(f"q{i} -{symbole}- q{dest} ")
+                    print(f"q{i} -{symbole}-> q{dest} ")
 
 def expression_reguliere_from_aef(aef):
     # Initialisation de la matrice de transition
@@ -211,8 +206,7 @@ def expression_reguliere_from_aef(aef):
     return expression_reg[0]
 
 
-#aef = [{'a': [0,1], 'b': [], 'final' : False, 'initial' : True}, 
-#{'a': [1], 'b': [1], 'final' : True, 'initial' : False}]
+#aef = [{'a': [0,1], 'b': [], 'final' : False, 'initial' : True}, {'a': [1], 'b': [1], 'final' : True, 'initial' : False}]
 
 mesAEF = []
 # Programme principal
@@ -238,7 +232,7 @@ if __name__ == "__main__":
         choice = input("Entrez votre choix : ")
 
         if choice == '1':
-            aef, symboles, nb_etats, etats_finaux = saisir_AEF()
+            aef, symboles, etats_finaux = saisir_AEF()
             mesAEF.append(aef)
         elif choice == '2':
             aef = Importer_AEF(input("Saisir le nom du fichier à importer : "))
@@ -270,7 +264,7 @@ if __name__ == "__main__":
             else:
                 print("L'AEF n'est pas déterministe")
         elif choice == '9':
-            aef_deterministe, nb_etats, etats_finaux = rendre_deterministe(aef, symboles, etats_finaux)
+            aef_deterministe = rendre_deterministe(aef, symboles, etats_finaux)
             print("L'AEF a été rendu déterministe")
             mesAEF.append(aef_deterministe)
             
@@ -279,19 +273,21 @@ if __name__ == "__main__":
             #Afficher_AEF(aef_deterministe)
             print(mesAEF)
             indice = int(input("Choisissez l'indice de l'aef que vous voulez afficher : "))
-            Affichage(mesAEF[indice], nb_etats, etats_finaux, symboles)
+            Affichage(mesAEF[indice], symboles)
 
         elif choice == '11':
             supprimerAEF(aef)
             print("L'AEF a été supprimé")
         elif choice == '12':
             aef_c = complementAEF(aef)
+            mesAEF.append(aef_c)
             print("Complément de l'AEF")
         elif choice == '13':
             # aef = [{'a': [0,1], 'b': [1], 'final': True, 'initial': True},
             #         {'a': [1], 'b': [0], 'final': True, 'initial': False}, 
             #         {'a': [2], 'b': [0,2],'final': False, 'initial': False}]
             aef_m = miroir(aef, symboles)
+            mesAEF.append(aef_m)
         elif choice == '14':
             expression_reguliere = expression_reguliere_from_aef(aef)
             print("Expression régulière:", expression_reguliere)
