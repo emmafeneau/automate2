@@ -1,5 +1,4 @@
-#import pandas as pd
-#import numpy as np
+
 import copy
 
 def saisir_AEF():
@@ -29,9 +28,22 @@ def saisir_AEF():
     # Par défaut, on prend l'état 0 comme état initial
     AEF[0]["initial"] = True
 
-    return AEF, alphabets, etats_finaux
+    return AEF
+
+def symbole_aef(aef):
+    symboles = set()
+
+    for etat in aef:
+        symboles.update(etat.keys())
+
+    # Retire les clés "final" et "initial" des symboles
+    symboles.discard('final')
+    symboles.discard('initial')
+
+    return sorted(list(symboles)) #range dans l'orde alphabétique
 
 def supprimerAEF(AEF):
+    print(f"Suppression du dernier AEF généré : {AEF}")
     AEF.clear()
     
 def complementAEF(AEF):
@@ -43,7 +55,7 @@ def complementAEF(AEF):
             etat["final"] = True
     return AEF_C
             
-def miroir(AEF, symboles): 
+def miroir(AEF): 
     count = 0
     for etat in AEF:
         if etat["final"]:
@@ -54,6 +66,7 @@ def miroir(AEF, symboles):
     
     AEF_M = [copy.deepcopy(etat) for etat in AEF]
 
+    symboles = symbole_aef(AEF)
     for etat in AEF_M:
         for symbole in symboles:
             etat[symbole] = []
@@ -79,24 +92,24 @@ def miroir(AEF, symboles):
     print("Le miroir de l'AEF a été généré")
     return AEF_M
         
-def estDeterministe(AEF, symboles):
+def estDeterministe(AEF):
+    symboles = symbole_aef(AEF)
     for etat in AEF:
         for symbole in symboles:
             if len(etat[symbole])>1:
                 return False
     return True
 
-def rendre_deterministe(AEF, alphabets, etats_finaux):
-    if estDeterministe(AEF, alphabets):
-        return AEF
+def rendre_deterministe(AEF):
     
     AEF_det = []  # Nouvel AEF déterministe vide
     file = []  # File pour stocker les nouveaux états à traiter
     dico = {}  # Dictionnaire pour associer les nouveaux états à des indices
     indice = 0  # Compteur d'indices initialisé
-
+    alphabets = symbole_aef(AEF)
     etat_initial = [0]  # l'état initial est toujours 0 par défaut
-    
+    etats_finaux = [i for i, etat in enumerate(AEF) if etat["final"]]
+
     file.append(etat_initial)  
     dico[tuple(etat_initial)] = indice
     indice += 1
@@ -130,44 +143,38 @@ def rendre_deterministe(AEF, alphabets, etats_finaux):
     
     return AEF_det
 
-
-
-def estComplet(AEF, symboles):
+def estComplet(AEF):
+    symboles = symbole_aef(AEF)
     for etat in AEF:
         for symbole in symboles:
             if len(etat[symbole])==0:
                 return False
     return True
 
-def Rendre_Complet(AEF, alphabets):
+def Rendre_Complet(AEF):
     AEF_Complet = [copy.deepcopy(etat) for etat in AEF]
-    if estComplet(AEF, alphabets):
-        print("L'AEF est déjà complet")
-        return AEF
-    else:
-        phi = {}
-        for alphabet in alphabets:
-            phi[alphabet] = [len(AEF_Complet)]
-        AEF_Complet.append(phi)
-        for etat in AEF_Complet:
-            for alphabet in alphabets:
-                if len(etat[alphabet])==0:
-                    etat[alphabet] = [len(AEF_Complet) - 1] # car on ajouté l'état phi
-                    
-        phi["final"] = False
-        phi["initial"] = False
-        return AEF_Complet
-  
-def Afficher_AEF(AEF):
-    print("AEF saisi :")
-    for i, etat in enumerate(AEF):
-        print(f"{i} = {etat}")
+    alphabets = symbole_aef(AEF)
 
-def Affichage(AEF, symboles):
+    phi = {}
+    for alphabet in alphabets:
+        phi[alphabet] = [len(AEF_Complet)]
+    AEF_Complet.append(phi)
+    for etat in AEF_Complet:
+        for alphabet in alphabets:
+            if len(etat[alphabet])==0:
+                etat[alphabet] = [len(AEF_Complet) - 1] # car on ajouté l'état phi
+                
+    phi["final"] = False
+    phi["initial"] = False
+    return AEF_Complet
+  
+def Affichage(AEF):
     print(f"Nombre d'états : {len(AEF)}")
-    print("Etat initial : q0")
+    etat_initial = [j for j, etat in enumerate(AEF) if etat["initial"]]
+    print("Etat initial : ", ", ".join(f"q{etat}" for etat in etat_initial))
     etats_finaux = [i for i, etat in enumerate(AEF) if etat["final"]]
     print("Etats finaux :", ", ".join(f"q{etat}" for etat in etats_finaux))
+    symboles = symbole_aef(AEF)
     print("Symboles de l'AEF :", ", ".join(f"{symbole}" for symbole in symboles))
     print("Transitions : ")
     for i, etat in enumerate(AEF):
@@ -176,40 +183,215 @@ def Affichage(AEF, symboles):
                 for dest in destinations:
                     print(f"q{i} -{symbole}-> q{dest} ")
 
-def expression_reguliere_from_aef(aef):
-    # Initialisation de la matrice de transition
-    n = len(aef)
-    matrice_transition = [[''] * n for _ in range(n)]
+def est_reconnu(aef, mot):
+    symboles = symbole_aef(aef)
+    etats_courants = {0}
 
-    # Remplissage de la matrice de transition
-    for i in range(n):
-        for j in range(n):
+    for symbole in mot:
+        if symbole not in symboles:
+            print(f"Le symbole '{symbole}' ne fait pas partie des symboles de l'aef.")
+            return False
+
+        nouveaux_etats = set()
+
+        for etat in etats_courants:
+            for nouvel_etat in aef[etat][symbole]:
+                nouveaux_etats.add(nouvel_etat)
+
+        etats_courants = nouveaux_etats
+
+
+        if not etats_courants:
+            return False
+
+    return any(aef[etat]["final"] for etat in etats_courants)
+
+def sauvegarder_aef(aef, nom_fichier):
+    symboles = symbole_aef(aef)
+
+    with open(nom_fichier, 'w') as fichier:
+        # Écriture des symboles de l'alphabet
+        fichier.write(','.join(symboles) + '\n')
+
+        # Écriture du nombre d'états
+        fichier.write(str(len(aef)) + '\n')
+
+        # Écriture des états finaux
+        etats_finaux = [str(i) for i, etat in enumerate(aef) if etat['final']]
+        fichier.write(','.join(etats_finaux) + '\n')
+
+        # Écriture des transitions pour chaque état
+        for i, etat in enumerate(aef):
             transitions = []
-            for symbole, destinations in aef[i].items():
-                # Exclure les clés "final" et "initial"
-                if symbole not in ["final", "initial"]:
-                    for dest in destinations:
-                        transitions.append(symbole)
-            # Construction de la partie initiale de l'expression pour cet état
-            matrice_transition[i][j] = f"({'|'.join(transitions)})"
+            for symbole, destinations in etat.items():
+                if symbole not in {'final', 'initial'}:
+                    destinations_str = ','.join(map(str, destinations))
+                    transitions.append(f"{symbole}:{destinations_str}")
+            fichier.write(' '.join(transitions) + '\n')
 
-    # Application du lemme d'Arden
-    for k in range(n):
-        for i in range(n):
-            for j in range(n):
-                # Utilisation du lemme d'Arden pour mettre à jour la matrice de transition
-                matrice_transition[i][j] = f"({matrice_transition[i][j]}|({matrice_transition[i][k]}({matrice_transition[k][k]})*{matrice_transition[k][j]}))"
+def importer_aef(nom_fichier):
+    with open(nom_fichier, 'r') as fichier:
+        lignes = fichier.readlines()
 
-    # La solution est dans la diagonale de la matrice
-    expression_reg = [matrice_transition[i][i] for i in range(n)]
+    symboles = lignes[0].strip().split(',')  # Récupérer les symboles de l'alphabet
+    nombre_etats = int(lignes[1].strip())  # Récupérer le nombre d'états
 
-    return expression_reg[0]
+    # Initialiser l'automate
+    aef = [{} for _ in range(nombre_etats)]
 
+    # Ajouter les états finaux et initiaux
+    etats_finaux = list(map(int, lignes[2].strip().split(',')))
+    for etat_final in etats_finaux:
+        aef[etat_final]['final'] = True
 
-#aef = [{'a': [0,1], 'b': [], 'final' : False, 'initial' : True}, {'a': [1], 'b': [1], 'final' : True, 'initial' : False}]
+    # Marquer l'état 0 comme initial
+    aef[0]['initial'] = True
 
-mesAEF = []
+    # Ajouter les transitions pour chaque état
+    for i in range(3, len(lignes)):
+        transitions_str = lignes[i].strip().split(' ')
+        for transition_str in transitions_str:
+            parts = transition_str.split(':')
+            symbole = parts[0]
+            destinations_str = parts[1] if len(parts) > 1 else ''
+            destinations = [] if destinations_str == '' else list(map(int, destinations_str.split(',')))
+            aef[i - 3][symbole] = destinations
+
+    # Ajouter les clés "final" et "initial" à la fin de chaque dictionnaire
+    for etat in aef:
+        etat['final'] = etat.get('final', False)
+        etat['initial'] = etat.get('initial', False)
+
+    return aef, symboles
+
+def ajouter_etat(aef):
+    
+    nouvel_etat = {}
+
+    # Spécifier les transitions
+    symboles = input("Symboles de transition (séparés par des espaces) : ").split()
+    for symbole in symboles:
+        destinations = list(map(int, input(f"États de destination pour '{symbole}' (séparés par des espaces) : ").split()))
+        nouvel_etat[symbole] = destinations
+
+    # Spécifier s'il est final et/ou initial
+    nouvel_etat["final"] = input("Est-ce un état final ? (Oui/Non) : ").lower() == "oui"
+    nouvel_etat["initial"] = input("Est-ce un état initial ? (Oui/Non) : ").lower() == "oui"
+
+    # Ajouter le nouvel état à l'AEF
+    aef.append(nouvel_etat)
+
+    return aef
+
+def modifier_aef(aef):
+   
+    print("\nActions disponibles:")
+    print("1. Ajouter un état")
+    print("2. Supprimer un état")
+    print("3. Ajouter une transition")
+    print("4. Supprimer une transition") 
+    action = input("Choisissez une action : ")
+
+    if action == "1":
+        aef = ajouter_etat(aef)
+    elif action == "2":
+        etat = int(input("Indiquez l'index de l'état à supprimer : "))
+        if aef[etat]["initial"] == True or aef[etat]["final"] == True:
+            print("Impossible de supprimer un état final ou initial")
+        elif 0 <= etat < len(aef):
+            del aef[etat]
+            for etat_courant in aef:
+                for symbole, dest in etat_courant.items():
+                    if symbole not in ["final", "initial"]:
+                        etat_courant[symbole] = [d for d in dest if d != etat]
+        else:
+            print("Index d'état non valide.")
+    elif action == "3":
+        etat = int(input("Indiquez l'index de l'état : "))
+        symbole = input("Indiquez le symbole de la transition : ")
+        destinations = list(map(int, input("Indiquez les états de destination (séparés par des espaces) : ").split()))
+        if 0 <= etat < len(aef):
+            if symbole in aef[etat]:
+                aef[etat][symbole] += destinations  # Ajouter les destinations sans supprimer les anciennes
+            else:
+                aef[etat][symbole] = destinations
+        else:
+            print("Index d'état non valide.")
+    elif action == "4":
+        etat = int(input("Indiquez l'index de l'état : "))
+        symbole = input("Indiquez le symbole de la transition à supprimer : ")
+        if 0 <= etat < len(aef) and symbole in aef[etat]:
+            aef[etat][symbole] = []
+        else:
+            print("Index d'état non valide ou symbole de transition non trouvé.")
+    else:
+        print("Action non reconnue.")
+
+    return aef
+
+def supprimer_etat(aef, etat):
+    if etat == 0:
+        return
+    
+    del aef[etat]
+    for etat_courant in aef:
+        for symbole, dest in etat_courant.items():
+            if symbole not in ["final", "initial"]:
+                etat_courant[symbole] = [d for d in dest if d != etat]
+
+def est_accessible(aef, indice_etat):
+    # accessible = chemin de 0 vers i
+    liste_etats_accessibles = []
+
+    for i in range(len(aef)):
+        for symbole, destinations in aef[i].items(): # on accède à l'état 
+            if symbole not in ["final", "initial"]:
+                for dest in destinations:
+                    if i == 0: # car tt les dest de etat0 sont etats accessibles
+                        liste_etats_accessibles.append(dest)
+                    elif i in liste_etats_accessibles:
+                        liste_etats_accessibles.append(dest)
+    
+    if indice_etat in liste_etats_accessibles:
+        return True
+    else:
+        return False
+
+def est_coaccessible(aef, indice_etat):
+    # coaccessible = chemin de i vers un etat final
+    liste_etats_coaccessibles = []
+    liste_etats_finaux = [i for i, etat in enumerate(aef) if etat["final"]]
+
+    for i in range(len(aef)):
+        for symbole, destinations in aef[i].items(): # on accède à l'état 
+            if symbole not in ["final", "initial"]:
+                for dest in destinations:
+                    if dest in liste_etats_finaux:
+                        liste_etats_coaccessibles.append(i)
+                    elif dest in liste_etats_coaccessibles:
+                        liste_etats_coaccessibles.append(i)
+    
+    if indice_etat in liste_etats_coaccessibles:
+        return True
+    else:
+        return False
+
+def rendre_emonde(aef):
+    aef_emonde = aef.copy()
+    etats_a_supp = []
+
+    for i, etat in enumerate(aef):
+        if not est_accessible(aef, i) or not est_coaccessible(aef, i): # on supp etats non accessibles ou bien non co-accessibles
+            etats_a_supp.append(i)
+
+    etats_a_supp.sort(reverse=True) # on range dans ordre décroissant pour supp les états par la fin 
+    for j in etats_a_supp:
+        supprimer_etat(aef_emonde, j)
+
+    return aef_emonde  
+
 # Programme principal
+mesAEF = []
 if __name__ == "__main__": 
     while True: 
         print("\nMenu :")
@@ -225,74 +407,98 @@ if __name__ == "__main__":
         print("10. Afficher l'AEF")
         print("11. Supprimer l'AEF")
         print("12. Complément de l'AEF")
-        print("13. miroir")
+        print("13. Miroir de l'AEF")
         print("14. Extraire l'expression régulière d'un AEF")
+        print("15. Rendre un AEF émondé")
         print("0. Quitter")
 
         choice = input("Entrez votre choix : ")
 
         if choice == '1':
-            aef, symboles, etats_finaux = saisir_AEF()
+            aef = saisir_AEF()
             mesAEF.append(aef)
+        
         elif choice == '2':
-            aef = Importer_AEF(input("Saisir le nom du fichier à importer : "))
-            print("AEF importé :")
-            #Afficher_AEF(aef)    
+            aef, symboles = importer_aef('H:/Desktop/ING 1/05 - Python/aef_22.txt')
+            print("L'AEF a été importé") 
+            mesAEF.append(aef)  
+        
         elif choice == '3':
-            filename = input("Entrez le nom du fichier pour la sauvegarde : ")
-            sauvegarder_AEF(aef, filename)    
+            sauvegarder_aef(aef, 'H:/Desktop/ING 1/05 - Python/aef_22.txt') 
+            print("L'AEF a été sauvegardé") 
+         
         elif choice == '4':
-            modifier_AEF(aef)
+            aef = modifier_aef(aef)
+        
         elif choice == '5':
             mot = input("Entrez un mot à vérifier : ")
-            if is_accepted(aef, mot):
+            if est_reconnu(aef, mot):
                 print("Le mot est reconnu par l'AEF.")
             else:
-                print("Le mot n'est pas reconnu par l'AEF.")
+                print("Le mot n'est pas reconnu par l'AEF.") 
+        
         elif choice == '6':
-            if estComplet(aef, symboles):
+            if estComplet(aef):
                 print("L'AEF est complet")
             else:
                 print("L'AEF n'est pas complet")    
+        
         elif choice == '7':
-            aef_complet = Rendre_Complet(aef, symboles)
-            print("L'AEF a été rendu complet")  
-            mesAEF.append(aef_complet) 
+            if estComplet(aef):
+                print("L'AEF est déjà complet")
+            else: 
+                aef_complet = Rendre_Complet(aef)
+                print("L'AEF a été rendu complet")
+                mesAEF.append(aef_complet)
+        
         elif choice == '8':
-            if estDeterministe(aef, symboles):
+            if estDeterministe(aef):
                 print("L'AEF est déterministe")
             else:
                 print("L'AEF n'est pas déterministe")
+        
         elif choice == '9':
-            aef_deterministe = rendre_deterministe(aef, symboles, etats_finaux)
-            print("L'AEF a été rendu déterministe")
-            mesAEF.append(aef_deterministe)
-            
+            if estDeterministe(aef):
+                print("L'AEF est déjà déterministe")
+            else: 
+                aef_deterministe = rendre_deterministe(aef)
+                print("L'AEF a été rendu déterministe")
+                mesAEF.append(aef_deterministe)
+
         elif choice == '10':
-            #Afficher_AEF(aef)
-            #Afficher_AEF(aef_deterministe)
-            print(mesAEF)
-            indice = int(input("Choisissez l'indice de l'aef que vous voulez afficher : "))
-            Affichage(mesAEF[indice], symboles)
+            for i, aef in enumerate(mesAEF):
+                print(f"AEF n°{i} : {aef}")
+            indice = int(input("Choisissez le numero de l'aef que vous voulez afficher : "))
+            Affichage(mesAEF[indice])
 
         elif choice == '11':
             supprimerAEF(aef)
-            print("L'AEF a été supprimé")
+            mesAEF.remove(aef)
+        
         elif choice == '12':
             aef_c = complementAEF(aef)
             mesAEF.append(aef_c)
-            print("Complément de l'AEF")
+            print("Le complément de l'AEF a été généré")
+        
         elif choice == '13':
-            # aef = [{'a': [0,1], 'b': [1], 'final': True, 'initial': True},
-            #         {'a': [1], 'b': [0], 'final': True, 'initial': False}, 
-            #         {'a': [2], 'b': [0,2],'final': False, 'initial': False}]
-            aef_m = miroir(aef, symboles)
+            aef_m = miroir(aef)
             mesAEF.append(aef_m)
+        
         elif choice == '14':
-            expression_reguliere = expression_reguliere_from_aef(aef)
-            print("Expression régulière:", expression_reguliere)
+            """ # aef_d = rendre_deterministe(aef, symboles, etats_finaux)
+            aef = [{'a': [0], 'b': [1], 'final': False, 'initial': True},
+               {'a': [2], 'b': [0], 'final': False, 'initial': False},
+               {'a': [1], 'b': [2], 'final': True, 'initial': False}]
+            expression_reguliere = arden_lemma(aef)
+            print(expression_reguliere) """
+
+        elif choice == '15':
+            aef_emonde = rendre_emonde(aef)
+            mesAEF.append(aef_emonde)
+            print("L'émondé de l'AEF a été généré")
 
         elif choice == '0':
             break
+        
         else:
             print("Choix invalide. Veuillez entrer un numéro valide.")
