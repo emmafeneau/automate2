@@ -2,6 +2,7 @@
 import copy
 
 def saisir_AEF():
+    # un aef est une liste d'états représentés par des dictionnaires
     AEF = []
     alphabets = input("Symboles de l'alphabet (séparés par des espaces) : ").split()
     n = int(input("Combien d'états dans l'AEF : "))
@@ -181,8 +182,8 @@ def miroir(AEF):
     for etat in AEF:
         if etat["final"]:
             count += 1
-    if count > 1:
-        print("Transformation impossible : l'AEF contient plusieurs états finaux")
+    if count > 1: # si l'état a plusieurs états finaux
+        print("Transformation impossible : l'AEF contient plusieurs états finaux") # car on ne peut pas avoir plusieurs états initiaux avec notre modèle d'aef
         return AEF
     
     AEF_M = [copy.deepcopy(etat) for etat in AEF]
@@ -208,7 +209,7 @@ def miroir(AEF):
             dest_list = AEF[i][symbole]
             if dest_list:
                 for dest in dest_list:
-                        AEF_M[dest][symbole].append(i)
+                        AEF_M[dest][symbole].append(i) # on inverse le sens de la transition
     
     print("Le miroir de l'AEF a été généré")
     return AEF_M
@@ -217,7 +218,7 @@ def estDeterministe(AEF):
     symboles = symbole_aef(AEF)
     for etat in AEF:
         for symbole in symboles:
-            if len(etat[symbole])>1:
+            if len(etat[symbole])>1: # si l'état un plusieurs destinations
                 return False
     return True
 
@@ -244,7 +245,7 @@ def rendre_deterministe(AEF):
                 etat_suivant.extend(AEF[i][alphabet]) # rajoute les éléments séparemment dans etat_suivant
             etat_suivant = list(set(etat_suivant))  # set va éliminer les doublons dans etat_suivant
             if etat_suivant:  # Si cet ensemble n'est pas vide
-                if tuple(etat_suivant) not in dico:  # Si cet état n'a pas encore été traité
+                if tuple(etat_suivant) not in dico:  # Si cet état n'a pas encore été traité (tuple nous permet de considérer plusieurs état comme un seul)
                     dico[tuple(etat_suivant)] = indice
                     indice += 1
                     file.append(etat_suivant)
@@ -268,7 +269,7 @@ def estComplet(AEF):
     symboles = symbole_aef(AEF)
     for etat in AEF:
         for symbole in symboles:
-            if len(etat[symbole])==0:
+            if len(etat[symbole])==0: # si l'état n'a aucune destination
                 return False
     return True
 
@@ -276,13 +277,13 @@ def Rendre_Complet(AEF):
     AEF_Complet = [copy.deepcopy(etat) for etat in AEF]
     alphabets = symbole_aef(AEF)
 
-    phi = {}
+    phi = {} # création de l'état puit
     for alphabet in alphabets:
-        phi[alphabet] = [len(AEF_Complet)]
+        phi[alphabet] = [len(AEF_Complet)] # phi reboucle sur lui-même avec tous les symboles
     AEF_Complet.append(phi)
     for etat in AEF_Complet:
         for alphabet in alphabets:
-            if len(etat[alphabet])==0:
+            if len(etat[alphabet])==0: # si l'état n'est pas complet (aucune destination)
                 etat[alphabet] = [len(AEF_Complet) - 1] # car on ajouté l'état phi
                 
     phi["final"] = False
@@ -291,9 +292,9 @@ def Rendre_Complet(AEF):
   
 def Affichage(AEF):
     print(f"Nombre d'états : {len(AEF)}")
-    etat_initial = [j for j, etat in enumerate(AEF) if etat["initial"]]
+    etat_initial = [j for j, etat in enumerate(AEF) if etat["initial"]] # on récupère liste etats initiaux
     print("Etat initial : ", ", ".join(f"q{etat}" for etat in etat_initial))
-    etats_finaux = [i for i, etat in enumerate(AEF) if etat["final"]]
+    etats_finaux = [i for i, etat in enumerate(AEF) if etat["final"]] # on récupère liste etats finaux
     print("Etats finaux :", ", ".join(f"q{etat}" for etat in etats_finaux))
     symboles = symbole_aef(AEF)
     print("Symboles de l'AEF :", ", ".join(f"{symbole}" for symbole in symboles))
@@ -451,14 +452,14 @@ def modifier_aef(aef):
     return aef
 
 def supprimer_etat(aef, etat):
-    if etat == 0:
+    if etat == 0: # on ne peut pas supprimer l'état initial
         return
     
     del aef[etat]
     for etat_courant in aef:
         for symbole, dest in etat_courant.items():
             if symbole not in ["final", "initial"]:
-                etat_courant[symbole] = [d for d in dest if d != etat]
+                etat_courant[symbole] = [d for d in dest if d != etat] # on supprime l'état dans les destinations
 
 def est_accessible(aef, indice_etat):
     # accessible = chemin de 0 vers i
@@ -487,9 +488,9 @@ def est_coaccessible(aef, indice_etat):
         for symbole, destinations in aef[i].items(): # on accède à l'état 
             if symbole not in ["final", "initial"]:
                 for dest in destinations:
-                    if dest in liste_etats_finaux:
+                    if dest in liste_etats_finaux: # si l'etat i va vers un etat final
                         liste_etats_coaccessibles.append(i)
-                    elif dest in liste_etats_coaccessibles:
+                    elif dest in liste_etats_coaccessibles: # si l'etat i va vers un etat co-accessible
                         liste_etats_coaccessibles.append(i)
     
     if indice_etat in liste_etats_coaccessibles:
