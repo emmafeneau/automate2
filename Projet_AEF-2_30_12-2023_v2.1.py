@@ -542,12 +542,12 @@ if __name__ == "__main__":
             mesAEF.append(aef)
         
         elif choice == '2':
-            aef, symboles = importer_aef('H:/Desktop/ING 1/05 - Python/aef_22.txt')
+            aef, symboles = importer_aef('H:/Desktop/ING 1/05 - Python/aef_22.txt') # Attention : il faut spécifier votre propre chemin
             print("L'AEF a été importé") 
             mesAEF.append(aef)  
         
         elif choice == '3':
-            sauvegarder_aef(aef, 'H:/Desktop/ING 1/05 - Python/aef_22.txt') 
+            sauvegarder_aef(aef, 'H:/Desktop/ING 1/05 - Python/aef_22.txt') # Attention : il faut spécifier votre propre chemin
             print("L'AEF a été sauvegardé") 
          
         elif choice == '4':
