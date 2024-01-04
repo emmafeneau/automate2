@@ -255,7 +255,7 @@ def rendre_deterministe(AEF):
     for etat in dico:  # Détermine les états finaux de l'AEF déterministe
         final = False
         for i in etat:
-            if str(i) in etats_finaux:
+            if i in etats_finaux: # si le nouvel état contient un ancien état final alors il devient final
                 final = True 
                 break
         AEF_det[dico[etat]]["final"] = final
